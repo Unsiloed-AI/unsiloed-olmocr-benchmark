@@ -1,0 +1,49 @@
+[project]
+name = "unsiloed-olmocr-benchmark"
+version = "0.1.0"
+description = "Reproducible olmOCR-Bench harness for third-party OCR/document-parsing services"
+requires-python = ">=3.11,<3.13"
+
+# Pinned for reproducibility against the upstream olmocr release.
+# Upstream: https://github.com/allenai/olmocr
+# Dataset:  https://huggingface.co/datasets/allenai/olmOCR-bench
+dependencies = [
+    "olmocr[bench]==0.4.27",
+    "huggingface-hub>=1.6.0",
+    "python-dotenv>=1.0.0",
+
+    # Provider SDKs for our custom runners (services not shipped upstream)
+    "llama-cloud-services",
+    "unstructured-client",
+    "agentic-doc",
+    "azure-ai-documentintelligence",
+    "boto3",
+    "reducto",
+    "extend-ai",
+
+    # Used by clients/bench_via_api.py (HTTP client for the public /v3/parse API)
+    "requests",
+
+    # Direct Anthropic API for the `claude_api` runner
+    "anthropic",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["bench"]
+
+[tool.setuptools.packages.find]
+where = ["services"]
+namespaces = false
+
+[tool.uv]
+# olmocr[bench]==0.4.27 transitively requires `mistralai`, but that package
+# was removed from PyPI (404 on the project page). We don't use the upstream
+# mistral runner — we have our own provider runners under services/ — so
+# override the constraint with one that's never satisfiable so uv ignores it.
+override-dependencies = [
+    "mistralai ; python_version < '0'",
+]

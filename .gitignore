@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+data/
+runs/
+output/
+*.pyc
+__pycache__/
+.venv/
+.DS_Store
