@@ -39,6 +39,7 @@ HEADERS = {"X-API-Key": KEY}
 MULTIPART_THRESHOLD = 3 * 1024 * 1024  # 3 MB; above this use /upload flow
 POLL_INTERVAL_SEC = 15
 RATE_LIMIT_BACKOFF_SEC = 5  # initial backoff on 429; exponential up to 60 s
+RESULT_DOWNLOAD_TIMEOUT_SEC = 60
 
 
 def _request_with_429_retry(method: str, url: str, **kwargs) -> requests.Response:
@@ -93,6 +94,18 @@ def _wait(job_id: str, label: str = "") -> dict:
         r.raise_for_status()
         body = r.json()
         status = body.get("status")
+        if status == "done" and body.get("result_url"):
+            # Large results are stored separately. The signed URL authorizes
+            # the download without the parser API key.
+            try:
+                result = requests.get(body["result_url"], timeout=RESULT_DOWNLOAD_TIMEOUT_SEC)
+            except requests.RequestException as exc:
+                raise RuntimeError(f"Could not download parser result ({type(exc).__name__})") from None
+            result.raise_for_status()
+            body = result.json()
+            if not isinstance(body, dict) or body.get("status") != "done" or not isinstance(body.get("pages"), list):
+                raise ValueError("Downloaded parser result is missing completed pages")
+            return body
         if status in ("done", "failed"):
             return body
         if status == "running":
